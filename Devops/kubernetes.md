@@ -76,3 +76,186 @@ Creating a kubernetes cluster is as simple as kind create cluster. (make sure ku
     role: control-plane
     role: worker
     role: worker
+- kind create cluster --image (image_name) --name cka-cluster2 --config config.yaml (same command with diff cluster)
+- kubectl config --set-context kind-cka-cluster1 - for switching to diff cluster
+
+### PODS:
+
+- So, within the kubernetes cluster we will be having pod.
+- There are two different ways:
+  - Imperative: Kubectl run nginx
+  - Declarative: We will be creating a json/yaml config file and then run the kubectl create or apply command.
+
+## Creating a nginx pod through kubectl imperative way:
+
+- Kubectl run nginx-pod --image=nginx:latest
+- This command will create a pod and we can check it by using the kubectl get pod command.
+
+## Creating a nginx pod through kubectl declarative way:
+
+- we will creating a yaml file for the same.
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-pod
+  labels:
+    env: demo
+    type: frontend
+spec:
+  containers:
+  - name: nginx-container
+    image: nginx
+    ports:
+    - containerPort: 80
+```
+
+use command to run a file:
+
+- kubectl create -f pod.yaml
+- kubectl get pods / kubectl get pods -o wide -> extended information
+- to see the pod description: kubectl describe pod nginx-pod
+- command to edit the configs directly on running pod -> kubectl edit pod nginx-pod
+- kubectl exec -it nginx-pod --sh -> inside the container.
+- kubectl run nginx --image=nginx --dry-run=client (it will just dry run and will not apply the changes but will create a pod)
+- kubectl run nginx --image=nginx --dry-run=client -o yaml > pod-new.yaml (it will just dry run and will not apply the changes but will create a pod adn will create a file with all the configs)
+
+## Deployment and Replication Controller , ReplicaSet
+
+- Replication controller is here to make sure that all the replicas are running all the time and it make sure the application does not crashes.
+- replication_controller.yaml file
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    env: demo
+spec:
+  template:
+    metadata:
+      labels:
+        env: demo
+      name: nginx
+    spec:
+      containers:
+      - image: nginx
+        name: nginx
+  replicas: 3
+  selector:
+    matchLabels:
+      env: demo
+```
+
+for running this:
+
+- kubectl apply -f rc.yaml
+- kubectl get pod
+- kubectl get rc
+
+## Kubernetes Services
+
+## nodePort: This is a service in which the application will be exposed to a particular port. It is exposed internally.
+
+- targetPort: This is a service in which the application will be exposed on.
+
+nodePort.yaml -
+
+```
+apiVersion: v1
+kind: Service
+metadata:
+  name: nodePort-svc
+  labels:
+    app: demo
+spec:
+  type: NodePort
+  ports:
+  - nodePort: 30001
+    port: 80
+    targetPort: 80
+  selector:
+    env: demo
+```
+
+commands:
+
+- kubectl create -f nodePort.yaml
+- kubectl get svc
+- kubectl get pod -o wide
+
+## cluster ip:
+
+clusterIp.yaml -
+
+```
+apiVersion: v1
+kind: Service
+metadata:
+  name: cluster-svc
+  labels:
+    app: demo
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 80
+  selector:
+    env: demo
+```
+
+commands:
+
+- kubectl create -f clusterIp.yaml
+- kubectl get svc
+- kubectl describe svc/cluster-svc
+- Endpoint is nothing but an IP of the pod in which IP is listening too.
+
+## load balancer:
+
+lb.yaml:
+
+```
+apiVersion: v1
+kind: Service
+metadata:
+  name: lb-svc
+  labels:
+    app: demo
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 80
+  selector:
+    env: demo
+```
+
+commands:
+
+- kubectl create -f lb.yaml
+- kubectl get svc
+- kubectl describe svc/lb-sv
+
+## external names:
+
+external-name.yaml:
+
+```
+apiVersion: v1
+kind: Service
+metadata:
+  name: external-name-svc
+  namespace: prod
+spec:
+  type: ExternalName
+  externalName: www.example.com
+```
+
+there is a method by which we can create service using command line:
+kubectl expose rc nginx --port=80 --target-port=8000
+
+## Namespaces:
+
+It provides you another layer of isolation within the cluster so that you can we can separate our objects and resources within the cluster.
